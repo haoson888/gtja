@@ -58,7 +58,6 @@ def send_mail(to_list,sub,content):
     mail_host="smtp.126.com"
     mail_user=getConfig("MAIL_DATA_SOURCE_INFO","username")
     mail_pass=getConfig("MAIL_DATA_SOURCE_INFO","password")
-    print mail_user,mail_pass
     mail_postfix="126.com"
     me="hello"+"<"+mail_user+"@"+mail_postfix+">"
     msg = MIMEText(content,_subtype='plain',_charset='gb2312')
@@ -163,7 +162,6 @@ def login(cookies,cookiesPath):
     # AppendCode = raw_input("captcheCode:")
     user = getConfig("GTJA_DATA_SOURCE_INFO","username")
     pwd = getConfig("GTJA_DATA_SOURCE_INFO","password")
-    print pwd
     trdpwd = base64.b64encode(pwd);
     data = '''method:login
 uid:'''+pwd+'''
