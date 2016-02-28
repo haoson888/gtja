@@ -19,6 +19,12 @@ class getStockMsg():
         self.message = ""
         self.flag=0
 
+    def getHistory(self,headers):
+         url = "http://www.niuguwang.com/tr/201411/stocklistitem.ashx?version=2.4.7&packtype=0&s=App%20Store&usertoken=jQagMY41cB1ez7WqyhkszhMBXG2aGu2Iq-yMbevPecU*&id=18667530"
+         r = requests.get(url=url, data="",headers = headers)
+         comments = r.json()
+         return  comments
+
     def getStock(self,i):
 
         # proxies = {'http': 'http://100.84.92.213:8889'}
@@ -30,10 +36,12 @@ class getStockMsg():
         r =requests.get(url,headers=headers)
         harene = ""
         PriceLimit= ""
-        
+        historyData = self.getHistory(headers)
+
         # i=5
         followersMessageType = r.json()['data'][i]['followersMessageType']
         #followersMessageType，1为buy，2为sell
+        
         if followersMessageType == 1 or followersMessageType == 2:
         # for i in range(0,len(r.json()['data'])):
         #     followersMessageType = r.json()['data'][i]['followersMessageType']
@@ -55,16 +63,18 @@ class getStockMsg():
                             percentage = percentage.split("%")[0]
                         else:
                             percentage = 0
+                        if historyData:
+                            historyCount = comments['stockListData'][0]['Position']
                         if self.message != percentage:
                             self.message = percentage
                             cookies= captcha.readCookies()
                             getHqHtml = captcha.paperBuyjsp(captcha.headers,cookies,captcha.liteheaders,stockCode)
                             PriceLimit,hardene,maxBuy,innercode,maxSell,lastAssets = captcha.gethardeneAPI(stockCode)
-                            if followersMessageType == 1 and float(percentage) > 40.0:
+                            if followersMessageType == 1 and float(historyCount) > 40.0:
                                 # hardene = captcha.gethardene(getHqHtml)
                                 print "hardene:"+str(hardene)
                                 PriceLimit = 0
-                            elif followersMessageType == 2 and float(percentage) > 40.0:
+                            elif followersMessageType == 2 and float(historyCount) > 40.0:
                                 # PriceLimit= captcha.getPriceLimit(getHqHtml)
                                 print "PriceLimit:"+ str(PriceLimit)
                                 hardene = 0
