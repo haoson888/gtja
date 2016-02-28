@@ -443,7 +443,7 @@ def run():
   getAsset(headers,cookies)
   t = getStockMsg.getStockMsg(0)
   flag = 0
-  while int(beginTime) > 150001:
+  while int(beginTime) < 150001:
       gethardeneAPI(stkcode)
       thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,))
       thread.start_new_thread(t.runloop,())
