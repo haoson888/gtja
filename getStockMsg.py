@@ -64,17 +64,17 @@ class getStockMsg():
                         else:
                             percentage = 0
                         if historyData:
-                            historyCount = comments['stockListData'][0]['Position']
+                            historyCount = historyData['stockListData'][0]['Position']
                         if self.message != percentage:
                             self.message = percentage
                             cookies= captcha.readCookies()
                             getHqHtml = captcha.paperBuyjsp(captcha.headers,cookies,captcha.liteheaders,stockCode)
                             PriceLimit,hardene,maxBuy,innercode,maxSell,lastAssets = captcha.gethardeneAPI(stockCode)
-                            if followersMessageType == 1 and float(historyCount) > 40.0:
+                            if followersMessageType == 1 :
                                 # hardene = captcha.gethardene(getHqHtml)
                                 print "hardene:"+str(hardene)
                                 PriceLimit = 0
-                            elif followersMessageType == 2 and float(historyCount) > 40.0:
+                            elif followersMessageType == 2 :
                                 # PriceLimit= captcha.getPriceLimit(getHqHtml)
                                 print "PriceLimit:"+ str(PriceLimit)
                                 hardene = 0
