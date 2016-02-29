@@ -90,8 +90,9 @@ class getStockMsg():
                                 captcha.simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode,lastAssets)
                                 endtime = time.time()
                                 print "simStockBuy Processed ："+str((endtime - starttime)*1000)+" ms"
-                                mailto_list=['328538688@qq.com']
-                                captcha.send_mail(mailto_list,savemessage,savemessage)
+                                if int(captcha.getConfig("CONFIG_DATA","mail")) ==1 :
+                                    mailto_list=['328538688@qq.com']
+                                    captcha.send_mail(mailto_list,savemessage,savemessage)
                             return
                         else:
                             timeArray = time.localtime(time.time())

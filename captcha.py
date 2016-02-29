@@ -25,6 +25,7 @@ import getStockMsg
 
 # proxies = {'http': 'http://192.168.199.214:8888',
 #                    'https': '192.168.199.214:8888'}
+
 proxies = {'http': 'http:://100.84.92.213:8889',
                    'https': '100.84.92.213:8889'}
 headers = {"Host": "trade.gtja.com",
@@ -86,6 +87,7 @@ def cur_file_dir():
          return os.path.dirname(path)
 
 cookiesPath = cur_file_dir() + "/cookies";
+assetPath = cur_file_dir() + "/asset.txt";
 def readCookies():
     openCookiefile= open(cookiesPath,"r")
     cookies = openCookiefile.read()
@@ -104,13 +106,16 @@ def getCaptchaCode(headers,cookies):
   headers['Cookie'] = cookies
   catp_url = 'https://trade.gtja.com/webtrade/commons/verifyCodeImage.jsp'
   imagefile = requests.get(catp_url,headers=headers)
-  image = Image.open(StringIO(imagefile.content))
-  # f = open('/Users/lylh/Desktop/capta.jpg','wb')
-  # f.write(imagefile.content)
-  # f.close()
-  vcode = pytesseract.image_to_string(image)
-  # print vcode
-  return vcode
+  if int(getConfig("CONFIG_DATA","captcha")) == 0 :
+      f = open('/Users/lylh/Desktop/capta.jpg','wb')
+      f.write(imagefile.content)
+      f.close()
+  else:
+      image = Image.open(StringIO(imagefile.content))
+      vcode = pytesseract.image_to_string(image)
+      # print vcode
+      return vcode
+
 
 
 def getCookies(cookiesPath):
@@ -159,7 +164,8 @@ def login(cookies,cookiesPath):
 
     AppendCode = getCaptchaCode(headers,cookies)
     # print AppendCode
-    # AppendCode = raw_input("captcheCode:")
+    if int(getConfig("CONFIG_DATA","captcha")) ==0 :
+        AppendCode = raw_input("captcheCode:")
     user = getConfig("GTJA_DATA_SOURCE_INFO","username")
     pwd = getConfig("GTJA_DATA_SOURCE_INFO","password")
     trdpwd = base64.b64encode(pwd);
@@ -200,8 +206,11 @@ AppendCode:''' + str(AppendCode)
           #重试登录
           login(cookies,cookiesPath)
       else:
-          mailto_list=['328538688@qq.com']
-          send_mail(mailto_list,"登录成功",title)
+          if int(getConfig("CONFIG_DATA","mail")) == 1 :
+              mailto_list=['328538688@qq.com']
+              send_mail(mailto_list,"登录成功",title)
+          else:
+              print "gtja login sucessful!!!"
 
 def getMenu(cookies):
   url = "https://trade.gtja.com/webtrade/trade/top.jsp?menu=stock"
@@ -267,6 +276,30 @@ def gethardeneAPI(stkcode):
       lastAssets = jsonData["lastAssets"]
       return limitDown,rasingLimit,maxBuy,innercode,maxSell,lastAssets
 
+def find_all_index(arr,item):
+    return [i for i,a in enumerate(arr) if a==item]
+
+def getAsset(headers,cookies):
+    f = open(assetPath,'w+')
+
+    url = "https://trade.gtja.com/webtrade/trade/webTradeAction.do?method=searchStackDetail"
+    headers['Cookie']= cookies
+    r = requests.get(url=url,headers=headers)
+    soup =  BeautifulSoup(r.content)
+    table = soup.find('table', {'bgcolor': '#83ACCF'})
+    tableList = table.text.split("\n")
+    if "人民币" in tableList:
+        flag = tableList.index("人民币")
+        if f.read() != tableList[int(flag)+1]:
+            f.write(tableList[int(flag)+1])
+            f.close()
+        return tableList[int(flag)+1]
+    else:
+        print '人民币 not in tableList'
+        return 0
+
+
+
 
 def getPriceLimit(html):
   soup = BeautifulSoup(html)
@@ -328,11 +361,17 @@ def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType):
     headers['Cookie']= cookies
     headers['Referer'] = "https://trade.gtja.com/webtrade/trade/PaperBuy.jsp"
     radiobutton =getRadioButton(followersMessageType)
+    f = open(assetPath,"r")
+    asset = f.read()
 
     if radiobutton == "B":
         price = hardene
     else:
         price = PriceLimit
+    if asset:
+        amount = (int(float(asset)/float(price))/100)*100
+    else:
+        amount =0
     data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
 stklevel:N
 tzdate:0
@@ -357,6 +396,7 @@ qty:100'''
                   timeArray = time.localtime(time.time())
                   nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
                   print str(nowTime) + str(_alert)
+                  getAsset(headers,cookies)
                  
                   return
     else:
@@ -396,10 +436,11 @@ def byOnline(headers,cookies,liteheaders,stkcode):
         print str(nowTime)+" : gtja is online...",hardene,PriceLimit
 
 def run():
-  stkcode = "300191"
+  stkcode = "002170"
   beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
   cookies = startLogin(headers,liteheaders,stkcode,cookiesPath)
+  getAsset(headers,cookies)
   t = getStockMsg.getStockMsg(0)
   flag = 0
   while int(beginTime) < 150001:
@@ -407,9 +448,10 @@ def run():
       thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,))
       thread.start_new_thread(t.runloop,())
       if flag == 0:
-        mailto_list=['328538688@qq.com']
-        send_mail(mailto_list,"已启动","OK!")
-        flag=1
+          if int(getConfig("CONFIG_DATA","mail")) ==1 :
+              mailto_list=['328538688@qq.com']
+              send_mail(mailto_list,"已启动","OK!")
+          flag =1
       #获取当前时间，判断是否为下午3点
       beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
