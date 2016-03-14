@@ -22,12 +22,15 @@ import smtplib
 import ConfigParser
 from email.mime.text import MIMEText
 import getStockMsg
+from database_manager.sqliteoperator import DBDriver
+import niuguwang
 
-# proxies = {'http': 'http://192.168.199.214:8888',
-#                    'https': '192.168.199.214:8888'}
-
-proxies = {'http': 'http:://100.84.92.213:8889',
-                   'https': '100.84.92.213:8889'}
+proxies = {'http': 'http://192.168.199.214:8888',
+                   'https': '192.168.199.214:8888'}
+dbfile = "/gtja.db"
+dbd = DBDriver(dbfile,(11,22))
+# proxies = {'http': 'http:://100.84.92.213:8889',
+#                    'https': '100.84.92.213:8889'}
 headers = {"Host": "trade.gtja.com",
     "Connection": "keep-alive",
     "Cache-Control": "max-age=0",
@@ -99,10 +102,30 @@ def cur_file_dir():
 cookiesPath = cur_file_dir() + "/cookies";
 assetPath = cur_file_dir() + "/asset.txt";
 def readCookies():
-    openCookiefile= open(cookiesPath,"r")
-    cookies = openCookiefile.read()
+    # openCookiefile= open(cookiesPath,"r")
+    # cookies = openCookiefile.read()
+    dbd = DBDriver(dbfile,(11,22))
+    selectsql = "select cookies from cookiesdata"
+    cookies = dbd.getResult(selectsql)
+    if len(cookies)==0:
+        cookies = ""
     return cookies
 
+def readAsset(dbd):
+    dbd = DBDriver(dbfile,(11,22))
+    selectsql = "SELECT total FROM totalAssetdata WHERE ID = 1;"
+    asset = dbd.getResult(selectsql)[0][0]
+    print asset
+    return asset
+
+def getTotalSellAmount(StockCode,dbd):
+    selectsql = '''SELECT TotalSellAmount FROM securitiesAssetdata WHERE StockCode = "'''+str(StockCode)+'''" ;'''
+    if len(dbd.getResult(selectsql))>0:
+        TotalSellAmount = dbd.getResult(selectsql)[0][0]
+    else:
+        TotalSellAmount = 0
+    print TotalSellAmount
+    return TotalSellAmount
 
 def parserBodyData(data):
   newdata = {}
@@ -128,7 +151,7 @@ def getCaptchaCode(headers,cookies):
 
 
 
-def getCookies(cookiesPath):
+def getCookies(cookiesPath,dbd):
   url = "https://trade.gtja.com/webtrade/trade/webTradeAction.do?method=preLogin"
   headers = '''Host: trade.gtja.com
 Accept-Encoding: gzip, deflate
@@ -150,15 +173,24 @@ DNT: 1 '''
   newcookies = 'BranchName='+_BranchName +';countType='+str(_countType)+';MyBranchCodeList='+str(_MyBranchCodeList)+';'+str(_cookies)
   print "cookies:"+newcookies
 
-  f = open(cookiesPath,'w+')
-  f.write(newcookies)
-  f.close()
+  # f = open(cookiesPath,'w+')
+  # f.write(newcookies)
+  # f.close()
+
+  selectsql = "select * from cookiesdata"
+  if len(dbd.getResult(selectsql)) == 0:
+        insertsql = "INSERT INTO cookiesdata (cookies) \
+      VALUES ('"+newcookies+"')";
+        dbd.execDB(insertsql)
+  else:
+      insertsql = "UPDATE cookiesdata set cookies = '"+newcookies+"' where ID=1"
+      dbd.getResult(insertsql)
   return newcookies
 
 
 
 
-def login(cookies,cookiesPath):
+def login(cookies,cookiesPath,dbd):
     url = "https://trade.gtja.com/webtrade/trade/webTradeAction.do"
     headers = {
     "Host": "trade.gtja.com",
@@ -212,9 +244,9 @@ AppendCode:''' + str(AppendCode)
       print title
       #判断是否登录成功
       if title != "国泰君安证券欢迎您" :
-          cookies = getCookies(cookiesPath)
+          cookies = getCookies(cookiesPath,dbd)
           #重试登录
-          login(cookies,cookiesPath)
+          login(cookies,cookiesPath,dbd)
       else:
           if int(getConfig("CONFIG_DATA","mail")) == 1 :
               mailto_list=['328538688@qq.com']
@@ -289,25 +321,49 @@ def gethardeneAPI(stkcode):
 def find_all_index(arr,item):
     return [i for i,a in enumerate(arr) if a==item]
 
-def getAsset(headers,cookies):
-    f = open(assetPath,'w+')
+def getAsset(headers,cookies,dbd):
+    # f = open(assetPath,'w+')
 
     url = "https://trade.gtja.com/webtrade/trade/webTradeAction.do?method=searchStackDetail"
     headers['Cookie']= cookies
     r = requests.get(url=url,headers=headers)
     soup =  BeautifulSoup(r.content)
-    table = soup.find('table', {'bgcolor': '#83ACCF'})
-    tableList = table.text.split("\n")
-    if "人民币" in tableList:
-        flag = tableList.index("人民币")
-        if f.read() != tableList[int(flag)+1]:
-            f.write(tableList[int(flag)+1])
-            f.close()
-        return tableList[int(flag)+1]
-    else:
-        print '人民币 not in tableList'
-        return 0
+    table = soup.findAll('table', {'bgcolor': '#83ACCF'})
+    for i in table:
+        for tr in  i.findAll('tr',{'bgcolor':'#FFFFFF'}):
+            td = tr.findAll('td')
+            if td and len(td)>2:
+                if td[1].text == "人民币":
+                      selectsql = "select * from totalAssetdata"
+                      if len(dbd.getResult(selectsql)) == 0:
+                            insertsql = "INSERT INTO totalAssetdata (total) \
+                          VALUES ('"+td[2].text+"')";
+                            dbd.execDB(insertsql)
+                      else:
+                          insertsql = "UPDATE totalAssetdata set total = '"+td[2].text+"' where ID=1"
+                          dbd.getResult(insertsql)
+                else:
+                      d =td[1].text
+                      updateDB(td[1].text,td[2].text,td[3].text,"new",dbd)
 
+
+def updateDB(StockCode,StockName,TotalSellAmount,radiobutton,dbd):
+    # radiobutton = 'S'
+    if radiobutton=="new" or  radiobutton != "S":
+        selectsql = "SELECT COUNT(*) FROM securitiesAssetdata WHERE StockCode = '"+StockCode+"' ;"
+        if dbd.getResult(selectsql)[0][0] == 0:
+            insertsql = "INSERT INTO securitiesAssetdata (StockCode, StockName , TotalSellAmount) \
+                    VALUES ('"+StockCode+"','"+StockName+"','"+TotalSellAmount+"')";
+
+
+        else:
+            insertsql = "UPDATE securitiesAssetdata set TotalSellAmount = '"+StockName+"' where StockCode="+StockCode
+            # dbd.getResult(insertsql)
+    else:
+        insertsql ='''DELETE from securitiesAssetdata where StockCode = "'''+ StockCode + '''" '''
+        # dbd.getResult(insertsql)
+    dbd.execDB(insertsql)
+    print insertsql
 
 
 
@@ -362,7 +418,7 @@ def simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode
     jsonData = r.json()
     print "simStockBuyjsonData:" +str(jsonData).decode('unicode_escape')
 
-def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType):
+def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd):
     starttime = time.time()
     randomTime =  random.randint(000, 999)
     unixTime = int(time.mktime(datetime.datetime.now().timetuple()))
@@ -371,61 +427,60 @@ def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType):
     headers['Cookie']= cookies
     headers['Referer'] = "https://trade.gtja.com/webtrade/trade/PaperBuy.jsp"
     radiobutton =getRadioButton(followersMessageType)
-    f = open(assetPath,"r")
-    asset = f.read()
+    # f = open(assetPath,"r")
+    asset = readAsset(dbd)
 
     if radiobutton == "B":
         price = hardene
-    else:
-        price = PriceLimit
-    if asset:
         amount = (int(float(asset)/float(price))/100)*100
     else:
-        amount =0
-    data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
+        price = PriceLimit
+        amount = getTotalSellAmount(stkcode,dbd)
+    print amount
+    if amount >= 100 :
+        data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
 stklevel:N
 tzdate:0
 market:2
 stkcode:'''+stkcode+'''
 radiobutton:'''+radiobutton+'''
 price:'''+price+'''
-qty:100'''
-    newdata =parserBodyData(data)
+qty:'''+str(amount)
 
-    # print newdata
-    r= requests.post(url,headers=headers,data=newdata)
-    con = r.content
-    if r.status_code == 200:
-      endtime = time.time()
-      print "Processed ："+str((endtime - starttime)*1000)+" ms"
-      soup = BeautifulSoup(con)
-      for tag in soup.find_all("script",{"src":False}):
-          scripts = tag.text.encode('utf8')
-          for _alert in scripts.split("\n"):
-              if _alert.find("alert") > 0:
-                  timeArray = time.localtime(time.time())
-                  nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-                  print str(nowTime) + str(_alert)
-                  getAsset(headers,cookies)
-                 
-                  return
-    else:
-      print r.status_code
-      print r.content
+        newdata =parserBodyData(data)
 
-def startLogin(headers,liteheaders,stkcode,cookiesPath):
+        # print newdata
+        r= requests.post(url,headers=headers,data=newdata)
+        con = r.content
+        if r.status_code == 200:
+          endtime = time.time()
+          print "Processed ："+str((endtime - starttime)*1000)+" ms"
+          soup = BeautifulSoup(con)
+          for tag in soup.find_all("script",{"src":False}):
+              scripts = tag.text.encode('utf8')
+              for _alert in scripts.split("\n"):
+                  if _alert.find("alert") > 0:
+                      timeArray = time.localtime(time.time())
+                      nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+                      print str(nowTime) + str(_alert)
+                      # getAsset(headers,cookies,dbd,radiobutton)
+                      updateDB(stkcode,"11","22",radiobutton,dbd)
+                      return
+        else:
+          print r.status_code
+          print r.content
 
-    if os.path.isfile(cookiesPath):
-        openCookiefile= open(cookiesPath,"r")
-        cookies = openCookiefile.read()
+def startLogin(headers,liteheaders,stkcode,cookiesPath,dbd):
+    cookies = readCookies()
+    if cookies:
         byOnlineResult = byOnline(headers,cookies,liteheaders,stkcode)
         #判断cookies是否过期
         if byOnlineResult == 1:
-            cookies = getCookies(cookiesPath)
-            login(cookies,cookiesPath)
+            cookies = getCookies(cookiesPath,dbd)
+            login(cookies,cookiesPath,dbd)
     else:
-      cookies = getCookies(cookiesPath)
-      login(cookies,cookiesPath)
+      cookies = getCookies(cookiesPath,dbd)
+      login(cookies,cookiesPath,dbd)
     return cookies
 
 
@@ -445,16 +500,30 @@ def byOnline(headers,cookies,liteheaders,stkcode):
     else:
         print str(nowTime)+" : gtja is online...",hardene,PriceLimit
 
+def dbCreate():
+      cookiesdesc = ("cookiesdata", "cookies varchar(500)")
+
+      dbd = DBDriver(dbfile, cookiesdesc)
+      dbd.cerateDB()
+      totalAssetdesc = ("totalAssetdata" , "total float")
+      dbd = DBDriver(dbfile, totalAssetdesc)
+      dbd.cerateDB()
+      securitiesAssetdesc = ("securitiesAssetdata","StockCode varchar(128), StockName varchar(128) , TotalSellAmount integer")
+      dbd = DBDriver(dbfile, securitiesAssetdesc)
+      dbd.cerateDB()
+      return dbd
+
+
 def run():
+  dbd = dbCreate()
   stkcode = "002170"
   beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
-  
   flag = 0
   while int(beginTime) < 150001:
       if flag == 0:
         cookies = startLogin(headers,liteheaders,stkcode,cookiesPath)
-        getAsset(headers,cookies)
+        getAsset(headers,cookies,dbd)
         t = getStockMsg.getStockMsg(0)
       gethardeneAPI(stkcode)
       thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,))
@@ -470,6 +539,8 @@ def run():
 
       time.sleep(60)
   modifyConfig("CONFIG_DATA","isRuning","0")
+  dbd.closeDB()
+
   
 
 if __name__ == '__main__':
