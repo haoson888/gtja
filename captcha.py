@@ -54,6 +54,16 @@ def getConfig(section, key):
     config.read(path)
     return config.get(section, key)
 
+def modifyConfig(section,key,value):
+    config = ConfigParser.ConfigParser()
+    path = os.path.split(os.path.realpath(__file__))[0] + '/config.ini'
+    config.read(path)
+    config.set(section,key,value)
+    fh = open(path ,'w')
+    config.write(fh)#把要修改的节点的内容写到文件中
+    fh.close()
+    
+
 
 def send_mail(to_list,sub,content):
     mail_host="smtp.126.com"
@@ -439,11 +449,13 @@ def run():
   stkcode = "002170"
   beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
-  cookies = startLogin(headers,liteheaders,stkcode,cookiesPath)
-  getAsset(headers,cookies)
-  t = getStockMsg.getStockMsg(0)
+  
   flag = 0
   while int(beginTime) < 150001:
+      if flag == 0:
+        cookies = startLogin(headers,liteheaders,stkcode,cookiesPath)
+        getAsset(headers,cookies)
+        t = getStockMsg.getStockMsg(0)
       gethardeneAPI(stkcode)
       thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,))
       thread.start_new_thread(t.runloop,())
@@ -451,11 +463,13 @@ def run():
           if int(getConfig("CONFIG_DATA","mail")) ==1 :
               mailto_list=['328538688@qq.com']
               send_mail(mailto_list,"已启动","OK!")
+              modifyConfig("CONFIG_DATA","isRuning","1")
           flag =1
       #获取当前时间，判断是否为下午3点
       beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
       time.sleep(60)
+  modifyConfig("CONFIG_DATA","isRuning","0")
   
 
 if __name__ == '__main__':
