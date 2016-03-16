@@ -7,6 +7,7 @@ import captcha
 import sys,re
 import time,datetime
 import thread
+from database_manager.sqliteoperator import DBDriver
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
@@ -18,6 +19,11 @@ class getStockMsg():
         self.i = num
         self.message = ""
         self.flag=0
+        self.dbfile = "/gtja.db"
+        # self.proxies = {'http': 'http://192.168.199.214:8888',
+        #                'https': '192.168.199.214:8888'}
+        self.proxies = {'http': 'http://100.84.92.213:8889',
+                       'https': '100.84.92.213:8889'}
 
     def getHistory(self,headers):
          url = "http://www.niuguwang.com/tr/201411/stocklistitem.ashx?version=2.4.7&packtype=0&s=App%20Store&usertoken=jQagMY41cB1ez7WqyhkszhMBXG2aGu2Iq-yMbevPecU*&id=18667530"
@@ -33,7 +39,7 @@ class getStockMsg():
             "Connection": "keep-alive",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
             "Accept-Encoding": "gzip, deflate"}
-        r =requests.get(url,headers=headers)
+        r =requests.get(url,headers=headers,proxies=self.proxies)
         harene = ""
         PriceLimit= ""
         historyData = self.getHistory(headers)
@@ -41,13 +47,13 @@ class getStockMsg():
         # i=5
         followersMessageType = r.json()['data'][i]['followersMessageType']
         #followersMessageType，1为buy，2为sell
-        
+
         if followersMessageType == 1 or followersMessageType == 2:
         # for i in range(0,len(r.json()['data'])):
         #     followersMessageType = r.json()['data'][i]['followersMessageType']
         #     if followersMessageType == 1 or followersMessageType == 2:
                 userName = r.json()['data'][i]['userName']
-                if userName == u"龙飞虎" :
+                if userName == u"龙飞虎" or userName == u"阿勤":
                         # for line in r.json()['data'][i]:
                         #     if type(r.json()['data'][i][line]) == "unicode":
                         #         print line +str(r.json()['data'][i][line].encode("utf8"))
@@ -56,6 +62,7 @@ class getStockMsg():
                         # print followersMessageType
                         stockCode = r.json()['data'][i]['stockCode']
                         savemessage = r.json()['data'][i]['message']
+                        stockName = r.json()['data'][i]['stockName']
                         print savemessage
                         m = re.match('.*?(\d+(\.\d+)?\%).*',savemessage)
                         if m:
@@ -83,9 +90,9 @@ class getStockMsg():
                                 hardene = None
                                 PriceLimit = None
                             if hardene or PriceLimit:
-                                
-                                thread.start_new_thread(captcha.PaperBuy,(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,))
-                                # captcha.PaperBuy(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType)
+                                dbd = DBDriver(self.dbfile,("11","22"))
+                                # captcha.PaperBuy(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,dbd)
+                                thread.start_new_thread(captcha.PaperBuy,(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,dbd,stockName,))
                                 starttime = time.time()
                                 captcha.simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode,lastAssets)
                                 endtime = time.time()
@@ -121,8 +128,9 @@ class getStockMsg():
         t = 0
         num = self.i
         while t < 60 :
-            time.sleep(1)
+
             self.getStock(num)
+            time.sleep(1)
             t = t +1
         thread.exit()
 

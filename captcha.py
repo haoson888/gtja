@@ -23,12 +23,11 @@ import ConfigParser
 from email.mime.text import MIMEText
 import getStockMsg
 from database_manager.sqliteoperator import DBDriver
-import niuguwang
 
 proxies = {'http': 'http://192.168.199.214:8888',
                    'https': '192.168.199.214:8888'}
 dbfile = "/gtja.db"
-dbd = DBDriver(dbfile,(11,22))
+# dbd = DBDriver(dbfile,(11,22))
 # proxies = {'http': 'http:://100.84.92.213:8889',
 #                    'https': '100.84.92.213:8889'}
 headers = {"Host": "trade.gtja.com",
@@ -337,23 +336,25 @@ def getAsset(headers,cookies,dbd):
                       selectsql = "select * from totalAssetdata"
                       if len(dbd.getResult(selectsql)) == 0:
                             insertsql = "INSERT INTO totalAssetdata (total) \
-                          VALUES ('"+td[2].text+"')";
+                          VALUES ('"+td[3].text+"')";
                             dbd.execDB(insertsql)
                       else:
-                          insertsql = "UPDATE totalAssetdata set total = '"+td[2].text+"' where ID=1"
+                          insertsql = "UPDATE totalAssetdata set total = '"+td[3].text+"' where ID=1"
                           dbd.getResult(insertsql)
                 else:
-                      d =td[1].text
-                      updateDB(td[1].text,td[2].text,td[3].text,"new",dbd)
+                      if int(td[4].text) > 0:
+                        updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"new",dbd)
+                      else:
+                        updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"S",dbd)
 
 
-def updateDB(StockCode,StockName,TotalSellAmount,radiobutton,dbd):
+def updateDB(StockCode,StockName,TotalSellAmount,ActionAmount,radiobutton,dbd):
     # radiobutton = 'S'
     if radiobutton=="new" or  radiobutton != "S":
         selectsql = "SELECT COUNT(*) FROM securitiesAssetdata WHERE StockCode = '"+StockCode+"' ;"
         if dbd.getResult(selectsql)[0][0] == 0:
-            insertsql = "INSERT INTO securitiesAssetdata (StockCode, StockName , TotalSellAmount) \
-                    VALUES ('"+StockCode+"','"+StockName+"','"+TotalSellAmount+"')";
+              insertsql = ''' INSERT INTO securitiesAssetdata (StockCode, StockName , TotalSellAmount,ActionAmount) \
+                      VALUES ( "''' +StockCode+'''","'''+StockName+'''","'''+TotalSellAmount+'''","'''+ActionAmount+'''") ''';
 
 
         else:
@@ -418,7 +419,8 @@ def simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode
     jsonData = r.json()
     print "simStockBuyjsonData:" +str(jsonData).decode('unicode_escape')
 
-def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd):
+def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName):
+    dbd = DBDriver(dbfile,(11,22))
     starttime = time.time()
     randomTime =  random.randint(000, 999)
     unixTime = int(time.mktime(datetime.datetime.now().timetuple()))
@@ -429,9 +431,9 @@ def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd
     radiobutton =getRadioButton(followersMessageType)
     # f = open(assetPath,"r")
     asset = readAsset(dbd)
-
     if radiobutton == "B":
         price = hardene
+        print asset,price
         amount = (int(float(asset)/float(price))/100)*100
     else:
         price = PriceLimit
@@ -464,7 +466,7 @@ qty:'''+str(amount)
                       nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
                       print str(nowTime) + str(_alert)
                       # getAsset(headers,cookies,dbd,radiobutton)
-                      updateDB(stkcode,"11","22",radiobutton,dbd)
+                      updateDB(stkcode,stockName,str(amount),str(amount),radiobutton,dbd)
                       return
         else:
           print r.status_code
@@ -485,7 +487,7 @@ def startLogin(headers,liteheaders,stkcode,cookiesPath,dbd):
 
 
 def byOnline(headers,cookies,liteheaders,stkcode):
-    getHqHtml = paperBuyjsp(headers,cookies,liteheaders,stkcode)
+    getHqHtml = paperBuyjsp(headers,cookies,liteheaders,stkcode,)
     hardene = gethardene(getHqHtml)
     PriceLimit= getPriceLimit(getHqHtml)
 
@@ -508,7 +510,7 @@ def dbCreate():
       totalAssetdesc = ("totalAssetdata" , "total float")
       dbd = DBDriver(dbfile, totalAssetdesc)
       dbd.cerateDB()
-      securitiesAssetdesc = ("securitiesAssetdata","StockCode varchar(128), StockName varchar(128) , TotalSellAmount integer")
+      securitiesAssetdesc = ("securitiesAssetdata","StockCode varchar(128), StockName varchar(128) , TotalSellAmount integer,ActionAmount integer")
       dbd = DBDriver(dbfile, securitiesAssetdesc)
       dbd.cerateDB()
       return dbd
@@ -522,7 +524,7 @@ def run():
   flag = 0
   while int(beginTime) < 150001:
       if flag == 0:
-        cookies = startLogin(headers,liteheaders,stkcode,cookiesPath)
+        cookies = startLogin(headers,liteheaders,stkcode,cookiesPath,dbd)
         getAsset(headers,cookies,dbd)
         t = getStockMsg.getStockMsg(0)
       gethardeneAPI(stkcode)
@@ -539,7 +541,7 @@ def run():
 
       time.sleep(60)
   modifyConfig("CONFIG_DATA","isRuning","0")
-  dbd.closeDB()
+  # dbd.closeDB()
 
   
 
