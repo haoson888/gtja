@@ -6,10 +6,13 @@ import requests
 import captcha
 import sys,re
 import time,datetime
+import json
 import thread
 from database_manager.sqliteoperator import DBDriver
 reload(sys)
 sys.setdefaultencoding("utf-8")
+
+
 
 class getStockMsg():
     # def run(self):
@@ -20,10 +23,11 @@ class getStockMsg():
         self.message = ""
         self.flag=0
         self.dbfile = "/gtja.db"
-        # self.proxies = {'http': 'http://192.168.199.214:8888',
-        #                'https': '192.168.199.214:8888'}
-        self.proxies = {'http': 'http://100.84.92.213:8889',
-                       'https': '100.84.92.213:8889'}
+        self.proxies = {'http': 'http://192.168.199.214:8888',
+                       'https': '192.168.199.214:8888'}
+        # self.proxies = {'http': 'http://100.84.92.213:8889',
+        #                'https': '100.84.92.213:8889'}
+
 
     def getHistory(self,headers):
          url = "http://www.niuguwang.com/tr/201411/stocklistitem.ashx?version=2.4.7&packtype=0&s=App%20Store&usertoken=jQagMY41cB1ez7WqyhkszhMBXG2aGu2Iq-yMbevPecU*&id=18667530"
@@ -31,29 +35,26 @@ class getStockMsg():
          comments = r.json()
          return  comments
 
-    def getStock(self,i):
 
-        # proxies = {'http': 'http://100.84.92.213:8889'}
+    def getStock(self,i,follower):
+
         url = "http://www.niuguwang.com/foll/api/getfollowersall.ashx?version=2.2.1&packtype=0&pagesize=20&usertoken=jQagMY41cB1ez7WqyhkszhMBXG2aGu2Iq-yMbevPecU*&page="+str(i)+"&s=App%20Store"
         headers = {
             "Connection": "keep-alive",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
             "Accept-Encoding": "gzip, deflate"}
-        r =requests.get(url,headers=headers,proxies=self.proxies)
+        r =requests.get(url,headers=headers)
         harene = ""
         PriceLimit= ""
         historyData = self.getHistory(headers)
-
-        # i=5
         followersMessageType = r.json()['data'][i]['followersMessageType']
         #followersMessageType，1为buy，2为sell
-
         if followersMessageType == 1 or followersMessageType == 2:
         # for i in range(0,len(r.json()['data'])):
         #     followersMessageType = r.json()['data'][i]['followersMessageType']
         #     if followersMessageType == 1 or followersMessageType == 2:
                 userName = r.json()['data'][i]['userName']
-                if userName == u"龙飞虎" or userName == u"阿勤":
+                if userName in follower:
                         # for line in r.json()['data'][i]:
                         #     if type(r.json()['data'][i][line]) == "unicode":
                         #         print line +str(r.json()['data'][i][line].encode("utf8"))
@@ -124,12 +125,12 @@ class getStockMsg():
             nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
             print str(nowTime) + " No buying and selling information！"
 
-    def runloop(self):
+    def runloop(self,follower):
         t = 0
         num = self.i
         while t < 60 :
 
-            self.getStock(num)
+            self.getStock(num,follower)
             time.sleep(1)
             t = t +1
         thread.exit()

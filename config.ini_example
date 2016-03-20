@@ -1,0 +1,12 @@
+[GTJA_DATA_SOURCE_INFO]
+username = 
+password = 
+
+[MAIL_DATA_SOURCE_INFO]
+username = 
+password = 
+
+[CONFIG_DATA]
+mail = 
+captcha = 
+follower = xx|xx

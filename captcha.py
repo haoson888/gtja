@@ -354,15 +354,14 @@ def updateDB(StockCode,StockName,TotalSellAmount,ActionAmount,radiobutton,dbd):
         selectsql = "SELECT COUNT(*) FROM securitiesAssetdata WHERE StockCode = '"+StockCode+"' ;"
         if dbd.getResult(selectsql)[0][0] == 0:
               insertsql = ''' INSERT INTO securitiesAssetdata (StockCode, StockName , TotalSellAmount,ActionAmount) \
-                      VALUES ( "''' +StockCode+'''","'''+StockName+'''","'''+TotalSellAmount+'''","'''+ActionAmount+'''") ''';
-
-
+                      VALUES ("''' +StockCode+'''","'''+StockName+'''","'''+TotalSellAmount+'''","'''+ActionAmount+'''") ''';
         else:
             insertsql = "UPDATE securitiesAssetdata set TotalSellAmount = '"+StockName+"' where StockCode="+StockCode
             # dbd.getResult(insertsql)
     else:
         insertsql ='''DELETE from securitiesAssetdata where StockCode = "'''+ StockCode + '''" '''
         # dbd.getResult(insertsql)
+    print insertsql
     dbd.execDB(insertsql)
     print insertsql
 
@@ -461,12 +460,13 @@ qty:'''+str(amount)
           for tag in soup.find_all("script",{"src":False}):
               scripts = tag.text.encode('utf8')
               for _alert in scripts.split("\n"):
-                  if _alert.find("alert") > 0:
+                  if _alert.find("alert") > 0 :
                       timeArray = time.localtime(time.time())
                       nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
                       print str(nowTime) + str(_alert)
                       # getAsset(headers,cookies,dbd,radiobutton)
-                      updateDB(stkcode,stockName,str(amount),str(amount),radiobutton,dbd)
+                      if _alert.find("资金可用数不足") == -1:
+                          updateDB(stkcode,stockName,str(amount),str(amount),radiobutton,dbd)
                       return
         else:
           print r.status_code
@@ -520,6 +520,7 @@ def run():
   dbd = dbCreate()
   stkcode = "002170"
   beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
+  follower = getConfig("CONFIG_DATA","follower").split("|")
 
   flag = 0
   while int(beginTime) < 150001:
@@ -529,7 +530,7 @@ def run():
         t = getStockMsg.getStockMsg(0)
       gethardeneAPI(stkcode)
       thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,))
-      thread.start_new_thread(t.runloop,())
+      thread.start_new_thread(t.runloop,(follower,))
       if flag == 0:
           if int(getConfig("CONFIG_DATA","mail")) ==1 :
               mailto_list=['328538688@qq.com']
