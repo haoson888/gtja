@@ -114,7 +114,6 @@ def readAsset(dbd):
     dbd = DBDriver(dbfile,(11,22))
     selectsql = "SELECT total FROM totalAssetdata WHERE ID = 1;"
     asset = dbd.getResult(selectsql)[0][0]
-    print asset
     return asset
 
 def getTotalSellAmount(StockCode,dbd):
@@ -361,9 +360,7 @@ def updateDB(StockCode,StockName,TotalSellAmount,ActionAmount,radiobutton,dbd):
     else:
         insertsql ='''DELETE from securitiesAssetdata where StockCode = "'''+ StockCode + '''" '''
         # dbd.getResult(insertsql)
-    print insertsql
     dbd.execDB(insertsql)
-    print insertsql
 
 
 
@@ -454,6 +451,7 @@ qty:'''+str(amount)
         r= requests.post(url,headers=headers,data=newdata)
         con = r.content
         if r.status_code == 200:
+          getAsset(headers,cookies,dbd)
           endtime = time.time()
           print "Processed ："+str((endtime - starttime)*1000)+" ms"
           soup = BeautifulSoup(con)
@@ -494,7 +492,7 @@ def byOnline(headers,cookies,liteheaders,stkcode):
 
     timeArray = time.localtime(time.time())
     nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-
+    getAsset(headers,cookies,dbd)
     if hardene == None or PriceLimit == None:
 
           print str(nowTime)+" Cookies is void, Start "
@@ -542,7 +540,7 @@ def run():
 
       time.sleep(60)
   modifyConfig("CONFIG_DATA","isRuning","0")
-  # dbd.closeDB()
+ 
 
   
 
