@@ -122,7 +122,6 @@ def getTotalSellAmount(StockCode,dbd):
         TotalSellAmount = dbd.getResult(selectsql)[0][0]
     else:
         TotalSellAmount = 0
-    print TotalSellAmount
     return TotalSellAmount
 
 def parserBodyData(data):
@@ -342,9 +341,9 @@ def getAsset(headers,cookies,dbd):
                           dbd.getResult(insertsql)
                 else:
                       if int(td[4].text) > 0:
-                        updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"new",dbd)
-                      else:
-                        updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"S",dbd)
+                          updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"new",dbd)
+                      # else:
+                      #   updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"S",dbd)
                 
 
 
@@ -356,7 +355,7 @@ def updateDB(StockCode,StockName,TotalSellAmount,ActionAmount,radiobutton,dbd):
               insertsql = ''' INSERT INTO securitiesAssetdata (StockCode, StockName , TotalSellAmount,ActionAmount) \
                       VALUES ("''' +StockCode+'''","'''+StockName+'''","'''+TotalSellAmount+'''","'''+ActionAmount+'''") ''';
         else:
-            insertsql = "UPDATE securitiesAssetdata set TotalSellAmount = '"+StockName+"' where StockCode="+StockCode
+            insertsql = "UPDATE securitiesAssetdata set TotalSellAmount = '"+TotalSellAmount+"' where StockCode="+StockCode
             # dbd.getResult(insertsql)
     else:
         insertsql ='''DELETE from securitiesAssetdata where StockCode = "'''+ StockCode + '''" '''
@@ -525,7 +524,7 @@ def run():
   while int(beginTime) < 150001:
       if flag == 0:
         cookies = startLogin(headers,liteheaders,stkcode,cookiesPath,dbd)
-        # getAsset(headers,cookies,dbd)
+        getAsset(headers,cookies,dbd)
         t = getStockMsg.getStockMsg(0)
       gethardeneAPI(stkcode)
       thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,dbd,))
