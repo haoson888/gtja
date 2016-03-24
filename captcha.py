@@ -321,7 +321,7 @@ def find_all_index(arr,item):
 
 def getAsset(headers,cookies,dbd):
     # f = open(assetPath,'w+')
-
+    dbd = dbCreate()
     url = "https://trade.gtja.com/webtrade/trade/webTradeAction.do?method=searchStackDetail"
     headers['Cookie']= cookies
     r = requests.get(url=url,headers=headers)
@@ -345,6 +345,7 @@ def getAsset(headers,cookies,dbd):
                         updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"new",dbd)
                       else:
                         updateDB(td[1].text,td[2].text,td[3].text,td[4].text,"S",dbd)
+                
 
 
 def updateDB(StockCode,StockName,TotalSellAmount,ActionAmount,radiobutton,dbd):
@@ -473,7 +474,7 @@ qty:'''+str(amount)
 def startLogin(headers,liteheaders,stkcode,cookiesPath,dbd):
     cookies = readCookies()
     if cookies:
-        byOnlineResult = byOnline(headers,cookies,liteheaders,stkcode)
+        byOnlineResult = byOnline(headers,cookies,liteheaders,stkcode,dbd)
         #判断cookies是否过期
         if byOnlineResult == 1:
             cookies = getCookies(cookiesPath,dbd)
@@ -484,7 +485,7 @@ def startLogin(headers,liteheaders,stkcode,cookiesPath,dbd):
     return cookies
 
 
-def byOnline(headers,cookies,liteheaders,stkcode):
+def byOnline(headers,cookies,liteheaders,stkcode,dbd):
     getHqHtml = paperBuyjsp(headers,cookies,liteheaders,stkcode,)
     hardene = gethardene(getHqHtml)
     PriceLimit= getPriceLimit(getHqHtml)
@@ -524,10 +525,10 @@ def run():
   while int(beginTime) < 150001:
       if flag == 0:
         cookies = startLogin(headers,liteheaders,stkcode,cookiesPath,dbd)
-        getAsset(headers,cookies,dbd)
+        # getAsset(headers,cookies,dbd)
         t = getStockMsg.getStockMsg(0)
       gethardeneAPI(stkcode)
-      thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,))
+      thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,dbd,))
       thread.start_new_thread(t.runloop,(follower,))
       if flag == 0:
           if int(getConfig("CONFIG_DATA","mail")) ==1 :
