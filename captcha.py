@@ -24,12 +24,12 @@ from email.mime.text import MIMEText
 import getStockMsg
 from database_manager.sqliteoperator import DBDriver
 
-proxies = {'http': 'http://192.168.199.214:8888',
-                   'https': '192.168.199.214:8888'}
+# proxies = {'http': 'http://192.168.199.214:8888',
+#                    'https': '192.168.199.214:8888'}
 dbfile = "/gtja.db"
 # dbd = DBDriver(dbfile,(11,22))
-# proxies = {'http': 'http:://100.84.92.213:8889',
-#                    'https': '100.84.92.213:8889'}
+proxies = {'http': 'http:://100.84.92.213:8889',
+                   'https': '100.84.92.213:8889'}
 headers = {"Host": "trade.gtja.com",
     "Connection": "keep-alive",
     "Cache-Control": "max-age=0",
@@ -426,15 +426,17 @@ def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd
     headers['Referer'] = "https://trade.gtja.com/webtrade/trade/PaperBuy.jsp"
     radiobutton =getRadioButton(followersMessageType)
     # f = open(assetPath,"r")
-    asset = readAsset(dbd)
+    
     if radiobutton == "B":
+        asset = readAsset(dbd)
         price = hardene
         print asset,price
         amount = (int(float(asset)/float(price))/100)*100
     else:
         price = PriceLimit
         amount = getTotalSellAmount(stkcode,dbd)
-    print amount
+     
+    print amount,stkcode
     if amount >= 100 :
         data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
 stklevel:N
@@ -451,21 +453,29 @@ qty:'''+str(amount)
         r= requests.post(url,headers=headers,data=newdata)
         con = r.content
         if r.status_code == 200:
-          getAsset(headers,cookies,dbd)
           endtime = time.time()
           print "Processed ："+str((endtime - starttime)*1000)+" ms"
+          getAsset(headers,cookies,dbd)
           soup = BeautifulSoup(con)
           for tag in soup.find_all("script",{"src":False}):
               scripts = tag.text.encode('utf8')
               for _alert in scripts.split("\n"):
-                  if _alert.find("alert") > 0 :
+                  if _alert.find("alert") == 1 :
+                      isBuy = 1
                       timeArray = time.localtime(time.time())
                       nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
                       print str(nowTime) + str(_alert)
                       # getAsset(headers,cookies,dbd,radiobutton)
                       if _alert.find("资金可用数不足") == -1:
                           updateDB(stkcode,stockName,str(amount),str(amount),radiobutton,dbd)
-                      return
+                      return 1
+          #加入重试机制
+          count = 1
+          while isBuy != 1:
+            isBuy = captcha.PaperBuy(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,dbd,stockName)
+            count += 1
+            if count < 4:
+              break
         else:
           print r.status_code
           print r.content
@@ -519,9 +529,10 @@ def run():
   stkcode = "002170"
   beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
   follower = getConfig("CONFIG_DATA","follower").split("|")
-
+  
+  print beginTime
   flag = 0
-  while int(beginTime) < 150001:
+  while 90001 < int(beginTime) < 150001:
       if flag == 0:
         cookies = startLogin(headers,liteheaders,stkcode,cookiesPath,dbd)
         getAsset(headers,cookies,dbd)
@@ -539,10 +550,13 @@ def run():
       beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
       time.sleep(60)
+      print beginTime
   modifyConfig("CONFIG_DATA","isRuning","0")
  
 
   
 
 if __name__ == '__main__':
-  run()
+  while 1==1:
+    run()
+    time.sleep(60*15)
