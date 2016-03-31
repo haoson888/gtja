@@ -416,69 +416,88 @@ def simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode
     print "simStockBuyjsonData:" +str(jsonData).decode('unicode_escape')
 
 def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName):
-    dbd = DBDriver(dbfile,(11,22))
-    starttime = time.time()
-    randomTime =  random.randint(000, 999)
-    unixTime = int(time.mktime(datetime.datetime.now().timetuple()))
-    gtja_entrust_sno =  str(unixTime) + str(randomTime)
-    url = "https://trade.gtja.com/webtrade/trade/webTradeAction.do?method=entrustBusinessOut"
-    headers['Cookie']= cookies
-    headers['Referer'] = "https://trade.gtja.com/webtrade/trade/PaperBuy.jsp"
-    radiobutton =getRadioButton(followersMessageType)
-    # f = open(assetPath,"r")
-    
-    if radiobutton == "B":
-        asset = readAsset(dbd)
-        price = hardene
-        print asset,price
-        amount = (int(float(asset)/float(price))/100)*100
-    else:
-        price = PriceLimit
-        amount = getTotalSellAmount(stkcode,dbd)
-     
-    print amount,stkcode
-    if amount >= 100 :
-        data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
+    try:
+      dbd = DBDriver(dbfile,(11,22))
+      starttime = time.time()
+      randomTime =  random.randint(000, 999)
+      unixTime = int(time.mktime(datetime.datetime.now().timetuple()))
+      gtja_entrust_sno =  str(unixTime) + str(randomTime)
+      url = "https://trade.gtja.com/webtrade/trade/webTradeAction.do?method=entrustBusinessOut"
+      headers['Cookie']= cookies
+      headers['Referer'] = "https://trade.gtja.com/webtrade/trade/PaperBuy.jsp"
+      radiobutton =getRadioButton(followersMessageType)
+      # f = open(assetPath,"r")
+      
+      if radiobutton == "B":
+          asset = readAsset(dbd)
+          price = hardene
+          # amount = "100"
+          # stkcode = "002170"
+          # price = "8.11"
+          amount = (int(float(asset)/float(price))/100)*100
+          data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
 stklevel:N
 tzdate:0
 market:2
-stkcode:'''+stkcode+'''
-radiobutton:'''+radiobutton+'''
-price:'''+price+'''
-qty:'''+str(amount)
-
-        newdata =parserBodyData(data)
-
-        # print newdata
-        r= requests.post(url,headers=headers,data=newdata)
-        con = r.content
-        if r.status_code == 200:
-          endtime = time.time()
-          print "Processed ："+str((endtime - starttime)*1000)+" ms"
-          getAsset(headers,cookies,dbd)
-          soup = BeautifulSoup(con)
-          for tag in soup.find_all("script",{"src":False}):
-              scripts = tag.text.encode('utf8')
-              for _alert in scripts.split("\n"):
-                  if _alert.find("alert") == 1 :
-                      isBuy = 1
-                      timeArray = time.localtime(time.time())
-                      nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-                      print str(nowTime) + str(_alert)
-                      # getAsset(headers,cookies,dbd,radiobutton)
-                      if _alert.find("资金可用数不足") == -1:
-                          updateDB(stkcode,stockName,str(amount),str(amount),radiobutton,dbd)
-                      return 1
-          #加入重试机制
-          count = 1
-          while isBuy != 1:
-            isBuy = captcha.PaperBuy(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,dbd,stockName)
-            count += 1
-            if count < 4:
-              break
-        else:
-          print r.status_code
-          print r.content
+stkcode:'''+str(stkcode)+'''
+radiobutton:'''+str(radiobutton)+'''
+price:'''+str(price)+'''
+qty:'''+ str(amount)
+      else:
+          price = PriceLimit
+          amount = getTotalSellAmount(stkcode,dbd)
+          # amount = "100"
+          # stkcode = "002170"
+          # price = "9.91"
+          data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
+saleStatus:1
+stkcode:'''+str(stkcode)+'''
+radiobutton:'''+str(radiobutton)+'''
+price:'''+str(price)+'''
+qty:'''+ str(amount)
+          # gtja_entrust_sno:1459393572222
+          # costprice:13.825
+          # saleStatus:1
+          # stkcode:002170
+          # radiobutton:S
+          # price:9.91
+          # qty:100
+      newdata =parserBodyData(data)
+      print amount,stkcode
+      isBuy = 0
+      if amount >= 100 :
+          # print newdata
+          r= requests.post(url,headers=headers,data=newdata,proxies=proxies,timeout=5)
+          con = r.content
+          if r.status_code == 200:
+            endtime = time.time()
+            print "Processed ："+str((endtime - starttime)*1000)+" ms"
+            getAsset(headers,cookies,dbd)
+            soup = BeautifulSoup(con)
+            for tag in soup.find_all("script",{"src":False}):
+                scripts = tag.text.encode('utf8')
+                for _alert in scripts.split("\n"):
+                    if _alert.find("alert") == 1 :
+                        isBuy = 1
+                        timeArray = time.localtime(time.time())
+                        nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+                        print str(nowTime) + str(_alert)
+                        # getAsset(headers,cookies,dbd,radiobutton)
+                        if _alert.find("资金可用数不足") == -1:
+                            updateDB(stkcode,stockName,str(amount),str(amount),radiobutton,dbd)
+                        return 1
+            #加入重试机制
+            count = 1
+            while isBuy != 1:
+              isBuy = PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName)
+              count += 1
+              if count < 4:
+                break
+          else:
+            print r.status_code
+            print r.content
+    except Exception, e:
+      print str(e)
 
 def startLogin(headers,liteheaders,stkcode,cookiesPath,dbd):
     cookies = readCookies()
