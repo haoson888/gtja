@@ -467,7 +467,7 @@ qty:'''+ str(amount)
       isBuy = 0
       if amount >= 100 :
           # print newdata
-          r= requests.post(url,headers=headers,data=newdata,proxies=proxies,timeout=5)
+          r= requests.post(url,headers=headers,data=newdata,timeout=5)
           con = r.content
           if r.status_code == 200:
             endtime = time.time()
