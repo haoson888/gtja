@@ -332,6 +332,7 @@ def getAsset(headers,cookies,dbd):
             if td and len(td)>2:
                 if td[1].text == "人民币":
                       selectsql = "select * from totalAssetdata"
+                      print td[1].text,td[2].text,td[3].text,td[4].text
                       if len(dbd.getResult(selectsql)) == 0:
                             insertsql = "INSERT INTO totalAssetdata (total) \
                           VALUES ('"+td[3].text+"')";
@@ -415,7 +416,7 @@ def simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode
     jsonData = r.json()
     print "simStockBuyjsonData:" +str(jsonData).decode('unicode_escape')
 
-def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName):
+def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName,i):
     try:
       dbd = DBDriver(dbfile,(11,22))
       starttime = time.time()
@@ -432,8 +433,8 @@ def PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd
           asset = readAsset(dbd)
           price = hardene
           # amount = "100"
-          # stkcode = "002170"
-          # price = "8.11"
+          # stkcode = "600210"
+          # price = "5.64"
           amount = (int(float(asset)/float(price))/100)*100
           data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
 stklevel:N
@@ -446,9 +447,9 @@ qty:'''+ str(amount)
       else:
           price = PriceLimit
           amount = getTotalSellAmount(stkcode,dbd)
-          # amount = "100"
-          # stkcode = "002170"
-          # price = "9.91"
+          # amount = "1000"
+          # stkcode = "600210"
+          # price = "6.3"
           data='''gtja_entrust_sno:'''+gtja_entrust_sno+'''
 saleStatus:1
 stkcode:'''+str(stkcode)+'''
@@ -464,14 +465,14 @@ qty:'''+ str(amount)
           # qty:100
       newdata =parserBodyData(data)
       print amount,stkcode
-      isBuy = 0
+      # isBuy = 0
       if amount >= 100 :
           # print newdata
           r= requests.post(url,headers=headers,data=newdata,timeout=5)
           con = r.content
           if r.status_code == 200:
             endtime = time.time()
-            print "Processed ："+str((endtime - starttime)*1000)+" ms"
+            print "Processed ："+ " " +"启动线程个数: " + str(i) + " " + str((endtime - starttime)*1000)+" ms"
             getAsset(headers,cookies,dbd)
             soup = BeautifulSoup(con)
             for tag in soup.find_all("script",{"src":False}):
@@ -481,22 +482,23 @@ qty:'''+ str(amount)
                         isBuy = 1
                         timeArray = time.localtime(time.time())
                         nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-                        print str(nowTime) + str(_alert)
+                        print str(nowTime) + " " +"启动线程个数: " + str(i) + " " + str(_alert)
                         # getAsset(headers,cookies,dbd,radiobutton)
                         if _alert.find("资金可用数不足") == -1:
                             updateDB(stkcode,stockName,str(amount),str(amount),radiobutton,dbd)
                         return 1
-            #加入重试机制
-            count = 1
-            while isBuy != 1:
-              isBuy = PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName)
-              count += 1
-              if count < 4:
-                break
+            # #加入重试机制
+            # count = 1
+            # while isBuy != 1:
+            #   isBuy = PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName,i)
+            #   count += 1
+            #   if count < 4:
+            #     break
           else:
             print r.status_code
             print r.content
     except Exception, e:
+      PaperBuy(hardene,PriceLimit,headers,cookies,stkcode,followersMessageType,dbd,stockName,i)
       print str(e)
 
 def startLogin(headers,liteheaders,stkcode,cookiesPath,dbd):
@@ -548,7 +550,6 @@ def run():
   stkcode = "002170"
   beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
   follower = getConfig("CONFIG_DATA","follower").split("|")
-  
   print beginTime
   flag = 0
   while 90001 < int(beginTime) < 150001:
@@ -568,7 +569,7 @@ def run():
       #获取当前时间，判断是否为下午3点
       beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
-      time.sleep(60)
+      time.sleep(30)
       print beginTime
   modifyConfig("CONFIG_DATA","isRuning","0")
  
