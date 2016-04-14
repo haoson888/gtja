@@ -73,12 +73,12 @@ class getStockMsg():
                             percentage = 0
                         if historyData:
                             historyCount = historyData['stockListData'][0]['Position']
-                        if self.message != percentage:
+                        if self.message != percentage :
                             self.message = percentage
                             cookies= captcha.readCookies()
                             getHqHtml = captcha.paperBuyjsp(captcha.headers,cookies,captcha.liteheaders,stockCode)
                             PriceLimit,hardene,maxBuy,innercode,maxSell,lastAssets = captcha.gethardeneAPI(stockCode)
-                            if followersMessageType == 1 :
+                            if followersMessageType == 1 and int(percentage) > 10:
                                 # hardene = captcha.gethardene(getHqHtml)
                                 print "hardene:"+str(hardene)
                                 PriceLimit = 0
@@ -92,11 +92,11 @@ class getStockMsg():
                                 PriceLimit = None
                             if hardene or PriceLimit:
                                 dbd = DBDriver(self.dbfile,("11","22"))
-                                captcha.PaperBuy(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,dbd)
+                                # captcha.PaperBuy(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,dbd)
                                 for i in range(1,10):
                                     thread.start_new_thread(captcha.PaperBuy,(hardene,PriceLimit,headers,cookies,stockCode,followersMessageType,dbd,stockName,i,))
                                 starttime = time.time()
-                                # captcha.simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode,lastAssets)
+                                captcha.simStockBuy(followersMessageType,hardene,PriceLimit,maxBuy,maxSell,innercode,lastAssets)
                                 endtime = time.time()
                                 print "simStockBuy Processed ："+str((endtime - starttime)*1000)+" ms"
                                 if int(captcha.getConfig("CONFIG_DATA","mail")) ==1 :

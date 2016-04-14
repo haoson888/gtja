@@ -553,24 +553,27 @@ def run():
   print beginTime
   flag = 0
   while 90001 < int(beginTime) < 150001:
-      if flag == 0:
-        cookies = startLogin(headers,liteheaders,stkcode,cookiesPath,dbd)
-        getAsset(headers,cookies,dbd)
-        t = getStockMsg.getStockMsg(0)
-      gethardeneAPI(stkcode)
-      thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,dbd,))
-      thread.start_new_thread(t.runloop,(follower,))
-      if flag == 0:
-          if int(getConfig("CONFIG_DATA","mail")) ==1 :
-              mailto_list=['328538688@qq.com']
-              send_mail(mailto_list,"已启动","OK!")
-              modifyConfig("CONFIG_DATA","isRuning","1")
-          flag =1
-      #获取当前时间，判断是否为下午3点
-      beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
+      try:
+        if flag == 0:
+          cookies = startLogin(headers,liteheaders,stkcode,cookiesPath,dbd)
+          getAsset(headers,cookies,dbd)
+          t = getStockMsg.getStockMsg(0)
+        gethardeneAPI(stkcode)
+        thread.start_new_thread(byOnline,(headers,cookies,liteheaders,stkcode,dbd,))
+        thread.start_new_thread(t.runloop,(follower,))
+        if flag == 0:
+            if int(getConfig("CONFIG_DATA","mail")) ==1 :
+                mailto_list=['328538688@qq.com']
+                send_mail(mailto_list,"已启动","OK!")
+                modifyConfig("CONFIG_DATA","isRuning","1")
+            flag =1
+        #获取当前时间，判断是否为下午3点
+        beginTime= time.strftime('%H%M%S',time.localtime(time.time()))
 
-      time.sleep(30)
-      print beginTime
+        time.sleep(30)
+        print beginTime
+      except Exception, e:
+        print str(e)
   modifyConfig("CONFIG_DATA","isRuning","0")
  
 
