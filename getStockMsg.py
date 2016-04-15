@@ -43,7 +43,7 @@ class getStockMsg():
             "Connection": "keep-alive",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
             "Accept-Encoding": "gzip, deflate"}
-        r =requests.get(url,headers=headers,timeout=5)
+        r =requests.get(url,headers=headers,timeout=5,proxies=self.proxies)
         harene = ""
         PriceLimit= ""
         historyData = self.getHistory(headers)
@@ -78,7 +78,7 @@ class getStockMsg():
                             cookies= captcha.readCookies()
                             getHqHtml = captcha.paperBuyjsp(captcha.headers,cookies,captcha.liteheaders,stockCode)
                             PriceLimit,hardene,maxBuy,innercode,maxSell,lastAssets = captcha.gethardeneAPI(stockCode)
-                            if followersMessageType == 1 and int(percentage) > 10:
+                            if followersMessageType == 1 and int(float(percentage))> 40:
                                 # hardene = captcha.gethardene(getHqHtml)
                                 print "hardene:"+str(hardene)
                                 PriceLimit = 0
@@ -106,12 +106,13 @@ class getStockMsg():
                         else:
                             timeArray = time.localtime(time.time())
                             nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-                            if followersMessageType ==1:
+                            if followersMessageType ==1 and int(float(percentage))> 40:
                                 print str(nowTime) + " Already buy！！！！"
                                 
                             elif followersMessageType ==2:
                                 print str(nowTime) + " Already sell"
-                                
+                            elif  int(float(percentage))< 40:
+                                print str(nowTime) +" percentage:"+str(percentage)+" percentage not more than 40"
                             else:
                                 print str(nowTime) + " No buying and selling information！"
 
