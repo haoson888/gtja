@@ -43,7 +43,7 @@ class getStockMsg():
             "Connection": "keep-alive",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
             "Accept-Encoding": "gzip, deflate"}
-        r =requests.get(url,headers=headers,timeout=5,proxies=self.proxies)
+        r =requests.get(url,headers=headers,timeout=5)
         harene = ""
         PriceLimit= ""
         historyData = self.getHistory(headers)
