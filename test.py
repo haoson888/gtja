@@ -23,9 +23,10 @@ import smtplib
 import ConfigParser
 from email.mime.text import MIMEText
 import getStockMsg
+import json
 
 
-class test_1m1m():
+class wushan_1m1m():
     def __init__(self):
         self.host = "http://www.1m1m.com"
         self.DefaultUrl = "/Pages/LoginAndRegister.aspx?ru=/Pages/Default.aspx"
@@ -35,10 +36,15 @@ class test_1m1m():
                  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                  "Origin": self.host,
                  "Upgrade-Insecure-Requests": "1",
-                 "Content-Type": "application/x-www-form-urlencoded"
+                 "Content-Type": "application/x-www-form-urlencoded",
+                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36",
+                 "Referer": "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=681&d=201606202"
                  }
-        self.proxies = {'http': '192.168.199.214:8888',
-                        'https': '192.168.199.214:8888'}
+        # self.proxies = {'http': '192.168.199.214:8888',
+        #                 'https': '192.168.199.214:8888'}
+
+        self.proxies = {'http': '100.84.92.213:8889',
+                    'https': '100.84.92.213:8889'}
 
     def getValidateCodeData(self,cookies):
         header={"Referer":self.host+self.DefaultUrl,
@@ -103,11 +109,11 @@ class test_1m1m():
             postBody["addOrModifyMedicalInformation_payType"] = "0"
             postBody["ctl00$ContentPlaceHolder_Body$hospitalID"]="2"
             postBody["ctl00$ContentPlaceHolder_Body$selectedScheduleFee"] = "9"
-            postBody["ctl00$ContentPlaceHolder_Body$patientID"]=1096189
+            postBody["ctl00$ContentPlaceHolder_Body$patientID"]=1098808
             postBody["ctl00$ContentPlaceHolder_Body$outCallID"] = 1175
-            postBody["ctl00$ContentPlaceHolder_Body$beginTime"] = "2016 - 06 - 14 14:30:00"
-            postBody["ctl00$ContentPlaceHolder_Body$endTime"] = "2016 - 06 - 14 15:00:00"
-            postBody["ctl00$ContentPlaceHolder_Body$selectedScheduleID"] = "14:30 - 15:00"
+            postBody["ctl00$ContentPlaceHolder_Body$beginTime"] = "2016-06-21 16:00:00"
+            postBody["ctl00$ContentPlaceHolder_Body$endTime"] = "2016-06-21 16:30:00"
+            postBody["ctl00$ContentPlaceHolder_Body$selectedScheduleID"] = "16:00-16:30"
             postBody["ctl00$searchBar$keyWordTxb"] = u"请输入医生、医院名称搜索（左边选择搜索类型）"
             # postBody["ctl00$ContentPlaceHolder_Body$loginNameTxb$txb"] = 18027187585
             # postBody["ctl00$ContentPlaceHolder_Body$loginPasswordTxb$txb"] = "lylh1987"
@@ -135,6 +141,7 @@ class test_1m1m():
         postBody = self.getPageInfo(loginHtml,"login")
         # print postBody
         cookies = r.cookies
+
         # print cookies
         postBody["ctl00$ContentPlaceHolder_Body$validateCodeTxb$txb"]= self.getValidateCodeData(cookies)
         print postBody
@@ -154,16 +161,56 @@ class test_1m1m():
                 self.login()
 
     def postwushan(self,s):
-        url = "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=1175&d=201606142"
+        # url = "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=1175&d=201606142"
+        url = "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=1175&d=201606212"
         r = s.get(url)
         # print r.content
         postBody = self.getPageInfo(r.content,"wushan")
+        time.sleep(5)
         r = s.post(url,data=postBody,headers=self.headers,proxies=self.proxies)
         print r.content
+        soup = BeautifulSoup(r.content)
+        result = soup.findAll('span', {'class': "regResult_failResult_reason_value"})
+        if result:
+            print result[0].text
 
-m= test_1m1m()
-s= m.login()
-m.postwushan(s)
+    def parserBodyData(self,data):
+        newdata = {}
+        for line in data.split("\n"):
+            key = line.split(": ")
+            newdata[key[0]] = key[1]
+        return newdata
+
+    def checkwushan(self):
+        url = "http://www.1m1m.com/AjaxData/Hospital/GetScheduleData.ashx"
+        data = '''hospitalID: 2
+sectionID: 483
+doctorID: 867
+outcallID: 1175
+beginDate: 2016 - 06 - 13
+endDate: 2016 - 06 - 21'''
+        body =self.parserBodyData(data)
+        headers = '''Content-Length: 94
+Accept: */*
+Origin: http://www.1m1m.com
+X-Requested-With: XMLHttpRequest
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Referer: http://www.1m1m.com/Pages/Hospital/Doctor.aspx?oid=1175
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.8,en;q=0.6,zh-TW;q=0.4'''
+        newheader = self.parserBodyData(headers)
+        s = requests.Session()
+        r = s.post(url,data=body,headers=newheader)
+        jsonData =  r.json
+        for i in (0,len(jsonData)):
+            print jsonData[i]
+
+
+if __name__ == '__main__':
+    m= wushan_1m1m()
+    # s= m.login()
+    m.checkwushan()
 
 # catp_url = 'http://www.1m1m.com/AjaxData/ValidateCodeData.ashx'
 # imagefile = requests.get(catp_url)
