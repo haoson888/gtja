@@ -16,13 +16,13 @@ import base64
 import thread
 import pytesseract
 from PIL import Image
-import requests
+import requests,requests.utils, pickle
 from StringIO import StringIO
 from bs4 import BeautifulSoup
 import smtplib
 import ConfigParser
 from email.mime.text import MIMEText
-import getStockMsg
+import getStockMsg,captcha
 import json
 
 
@@ -32,6 +32,7 @@ class wushan_1m1m():
         self.DefaultUrl = "/Pages/LoginAndRegister.aspx?ru=/Pages/Default.aspx"
         self.loginUrl = ""
         self.ValidateCodeUrl = "/AjaxData/ValidateCodeData.ashx"
+        self.CenterUrl = "http://www.1m1m.com/Pages/Member/Center.aspx"
         self.headers = {
                  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                  "Origin": self.host,
@@ -42,16 +43,61 @@ class wushan_1m1m():
                  }
         # self.proxies = {'http': '192.168.199.214:8888',
         #                 'https': '192.168.199.214:8888'}
+        self.cookiesPath = self.cur_file_dir() + "/cookies";
 
-        self.proxies = {'http': '100.84.92.213:8889',
-                    'https': '100.84.92.213:8889'}
+        # self.proxies = {'http': '100.84.92.213:8889',
+                    # 'https': '100.84.92.213:8889'}
+
+        self.proxies = {'http': '117.185.122.205:8080',
+                    'https': '117.185.122.205:8080'}
+
+        self.cookies = self.isLogin()
+
+    # 获取脚本文件的当前路径
+    def cur_file_dir(self):
+        # 获取脚本路径
+        path = sys.path[0]
+        # 判断为脚本文件还是py2exe编译后的文件，如果是脚本文件，则返回的是脚本的目录，如果是py2exe编译后的文件，则返回的是编译后的文件路径
+        if os.path.isdir(path):
+            return path
+        elif os.path.isfile(path):
+            return os.path.dirname(path)
+
+    def isLogin(self):
+
+        if os.path.isfile(self.cookiesPath):
+
+            # openCookiefile = open(self.cookiesPath, "r")
+            # cookies = openCookiefile.read()
+            with open(self.cookiesPath) as f:
+                if f:
+                    cookies = self.load_cookies(self.cookiesPath)
+                else:
+
+                    date = datetime.date.today()
+                    self.login(str(date))
+            s = requests.session()
+            r = s.get(self.CenterUrl, cookies=cookies,proxies=self.proxies)
+            print r.status_code
+            # print r.content
+            soup = BeautifulSoup(r.content)
+            content_name = soup.findAll('span', {'class': "topLoginBar_content_name"})
+            if content_name and content_name[0].text == "18027187585":
+                return cookies
+            else:
+                date = datetime.date.today()
+                self.login(str(date))
+
+        else:
+            date = datetime.date.today()
+            self.login(str(date))
 
     def getValidateCodeData(self,cookies):
         header={"Referer":self.host+self.DefaultUrl,
                 "Accept": "image/webp,image/*,*/*;q=0.8",
                 "User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
         }
-        imagefile = requests.get(self.host+self.ValidateCodeUrl,headers=header,cookies=cookies)
+        imagefile = requests.get(self.host+self.ValidateCodeUrl,headers=header,cookies=cookies,proxies=self.proxies)
         f = open('/Users/lylh/Desktop/capta.jpg', 'wb')
         f.write(imagefile.content)
         image = Image.open(StringIO(imagefile.content))
@@ -132,7 +178,16 @@ class wushan_1m1m():
         # EVENTVALIDATION = soup.findAll('input', {'id': '__EVENTVALIDATION'})
         # EVENTVALIDATION = EVENTVALIDATION[0]["value"]
 
-    def login(self):
+    def save_cookies(self,requests_cookiejar, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(requests_cookiejar, f)
+
+    def load_cookies(self,filename):
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
+
+
+    def login(self,date):
         # cookies = requests.get(os.path.join(self.host,self.DefaultUrl))
         s = requests.Session()
         url=self.host+self.DefaultUrl
@@ -141,11 +196,10 @@ class wushan_1m1m():
         postBody = self.getPageInfo(loginHtml,"login")
         # print postBody
         cookies = r.cookies
-
+        # with open(self.cookiesPath, 'w') as f:
+        #     pickle.dump(requests.utils.dict_from_cookiejar(cookies), f)
         # print cookies
         postBody["ctl00$ContentPlaceHolder_Body$validateCodeTxb$txb"]= self.getValidateCodeData(cookies)
-        print postBody
-
         url = self.host + self.DefaultUrl
         r = s.post(url,data=postBody,headers=self.headers,proxies=self.proxies)
         print r.status_code
@@ -155,24 +209,43 @@ class wushan_1m1m():
             isLogin = loginHtml[0].text
             if isLogin == "18027187585":
                 print "login sucessful"
-                self.postwushan(s)
+                self.save_cookies(cookies, self.cookiesPath)
+                self.postwushan(date,cookies)
+                return 0
+
         else:
                 time.sleep(5)
-                self.login()
+                self.login(str(date))
 
-    def postwushan(self,s):
+    def postwushan(self,date,cookies):
         # url = "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=1175&d=201606142"
-        url = "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=1175&d=201606212"
-        r = s.get(url)
-        # print r.content
-        postBody = self.getPageInfo(r.content,"wushan")
-        time.sleep(5)
-        r = s.post(url,data=postBody,headers=self.headers,proxies=self.proxies)
-        print r.content
-        soup = BeautifulSoup(r.content)
-        result = soup.findAll('span', {'class': "regResult_failResult_reason_value"})
-        if result:
-            print result[0].text
+        url = "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=1175&d="+str(date.replace("-",""))+"2"
+        s = requests.session()
+        r = s.get(url,cookies=cookies,proxies=self.proxies)
+        # postBody = self.getPageInfo(r.content, "wushan")
+        # time.sleep(5)
+        # r = s.post(url, data=postBody, headers=self.headers, cookies=cookies, proxies=self.proxies)
+        # soup = BeautifulSoup(r.content)
+        # result = soup.findAll('span', {'class': "regResult_failResult_reason_value"})
+        # # for tag in soup.find_all("script", {"src": False}):
+        # #     scripts = tag.text.encode('utf8')
+        # #     for _alert in scripts.split("\n"):
+        # #         if _alert.find("errorMsgBox") == 1:
+        # #             print str(_alert)
+        # if result:
+        #     print result[0].text
+        if len(r.history) == 0 and r.status_code == 200:
+                # print r.content
+                postBody = self.getPageInfo(r.content,"wushan")
+                time.sleep(5)
+                r = s.post(url,data=postBody,headers=self.headers,cookies=cookies,proxies=self.proxies)
+                soup = BeautifulSoup(r.content)
+                result = soup.findAll('span', {'class': "regResult_failResult_reason_value"})
+                if result:
+                    print result[0].text
+        else:
+            date = datetime.date.today()
+            self.login(str(date))
 
     def parserBodyData(self,data):
         newdata = {}
@@ -182,13 +255,17 @@ class wushan_1m1m():
         return newdata
 
     def checkwushan(self):
+
+        cookies = self.cookies
         url = "http://www.1m1m.com/AjaxData/Hospital/GetScheduleData.ashx"
+        d1 = datetime.date.today()
+        sevenDay = d1 + datetime.timedelta(8)
         data = '''hospitalID: 2
 sectionID: 483
 doctorID: 867
 outcallID: 1175
-beginDate: 2016 - 06 - 13
-endDate: 2016 - 06 - 21'''
+beginDate: '''+str(d1)+'''
+endDate: '''+str(sevenDay)+''''''
         body =self.parserBodyData(data)
         headers = '''Content-Length: 94
 Accept: */*
@@ -201,30 +278,46 @@ Accept-Encoding: gzip, deflate
 Accept-Language: zh-CN,zh;q=0.8,en;q=0.6,zh-TW;q=0.4'''
         newheader = self.parserBodyData(headers)
         s = requests.Session()
-        r = s.post(url,data=body,headers=newheader)
-        jsonData =  r.json
-        for i in (0,len(jsonData)):
-            print jsonData[i]
+        r = s.post(url,data=body,headers=newheader,proxies=self.proxies)
+
+        jsonData =  r.json()
+        flag = 0
+        if len(jsonData) >0:
+            for i in range(0,len(jsonData)):
+                wushanData =  jsonData[i]
+                SectionName = wushanData["SectionName"]
+                ScheduleItems= wushanData["ScheduleItems"][0]
+                NumberCount = ScheduleItems["NumberCount"]
+                TimePeriod = ScheduleItems["TimePeriod"]
+                Date = wushanData['Date']
+                Datestr = str(datetime.datetime.strptime(Date, "%Y-%m-%dT%H:%M:%S").date())
+                if SectionName == u"按摩科" and int(NumberCount) > 0 and TimePeriod != u"晚上":
+                # if SectionName == u"按摩科" and int(NumberCount) == 0 and TimePeriod != u"晚上":
+
+                    if int(captcha.getConfig("CONFIG_DATA", "mail")) == 1:
+                        mailto_list = ['328538688@qq.com']
+                        captcha.send_mail(mailto_list, "wushan","wushan")
+                        # s = m.login(Datestr)
+                        self.postwushan(Datestr,cookies)
+                        flag = 1
+                        return 0
+
+            if flag == 0:
+                    timeArray = time.localtime(time.time())
+                    nowTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+                    print str(nowTime) + " wushan is not NumberCount"
+
 
 
 if __name__ == '__main__':
-    m= wushan_1m1m()
-    # s= m.login()
-    m.checkwushan()
 
-# catp_url = 'http://www.1m1m.com/AjaxData/ValidateCodeData.ashx'
-# imagefile = requests.get(catp_url)
-# f = open('/Users/lylh/Desktop/capta.jpg','wb')
-# f.write(imagefile.content)
-# image = Image.open(StringIO(imagefile.content))
-# vcode = pytesseract.image_to_string(image)
-# print vcode
-# if int(getConfig("CONFIG_DATA","captcha")) == 0 :
-#       f = open('/Users/lylh/Desktop/capta.jpg','wb')
-#       f.write(imagefile.content)
-#       f.close()
-# else:
-#       image = Image.open(StringIO(imagefile.content))
-#       vcode = pytesseract.image_to_string(image)
-#       # print vcode
-#       return vcode
+    m= wushan_1m1m()
+
+
+    while True:
+        try:
+            m.checkwushan()
+        except Exception, e:
+            print str(e)
+        time.sleep(5)
+
