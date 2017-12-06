@@ -23,10 +23,7 @@ class getStockMsg():
         self.message = ""
         self.flag=0
         self.dbfile = "/gtja.db"
-        # self.proxies = {'http': 'http://192.168.199.214:8888',
-        #                'https': '192.168.199.214:8888'}
-        self.proxies = {'http': 'http://100.84.92.213:8889',
-                       'https': '100.84.92.213:8889'}
+       
 
 
     def getHistory(self,headers):
