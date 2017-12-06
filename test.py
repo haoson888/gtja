@@ -41,15 +41,7 @@ class wushan_1m1m():
                  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36",
                  "Referer": "http://www.1m1m.com/Pages/Reg/RegList.aspx?oid=681&d=201606202"
                  }
-        # self.proxies = {'http': '192.168.199.214:8888',
-        #                 'https': '192.168.199.214:8888'}
-        self.cookiesPath = self.cur_file_dir() + "/cookies";
-
-        # self.proxies = {'http': '100.84.92.213:8889',
-                    # 'https': '100.84.92.213:8889'}
-
-        self.proxies = {'http': '117.185.122.205:8080',
-                    'https': '117.185.122.205:8080'}
+       
 
         self.cookies = self.isLogin()
 
